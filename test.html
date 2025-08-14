@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <script src="./dist/index.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <ul>
+        <li x-for="item,index in list">
+          <span x-text="index"></span>
+          <span x-text="count"></span>
+        </li>
+      </ul>
+      <hr />
+      <button x-on="{click:add}">add</button>
+      <button x-on="{click:push}">push</button>
+    </div>
+    <script>
+      const { cbs, mount } = hton.create((get, set) => {
+        return {
+          count: 0,
+          list: [1],
+          add() {
+            set({
+              count: get().count + 1,
+            });
+          },
+          push() {
+            set({
+              list: [...get().list, Date.now()],
+            });
+          },
+        };
+      });
+      mount(document.querySelector("#app"));
+    </script>
+  </body>
+</html>
