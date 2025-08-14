@@ -28,6 +28,23 @@ function xtext(opt) {
     opt.dom.innerText = value;
   });
 }
+function xcontent(opt) {
+  if (opt.dom.getAttribute("x-text")) {
+    return;
+  }
+
+  console.log(
+    "%c 🐛[  ]-36",
+    "font-size:13px; background:#3223e9; color:#7667ff;",
+    opt.dom.childNodes
+  );
+  const match = opt.dom.innerHTML.match(/\{(.*?)\}/g);
+  console.log(
+    "%c 🐛[ match ]-33",
+    "font-size:13px; background:#7de3a3; color:#c1ffe7;",
+    match
+  );
+}
 
 function xon(opt) {
   return react("x-on", opt, (obj) => {
@@ -63,7 +80,7 @@ function xfor(opt) {
   const exp = dom.getAttribute("x-for");
   dom.removeAttribute("x-for");
   if (!exp) return;
-
+  const origin = dom.cloneNode(true);
   const parsed = exp.split(/\bin\b/).map((v) => v.trim());
   const error = new Error(
     "x-for must be like 'k,v in list (for object) or item in list (for array)'"
@@ -112,7 +129,7 @@ function xfor(opt) {
         }));
 
     list.forEach((item) => {
-      const clone = dom.cloneNode(true);
+      const clone = origin.cloneNode(true);
       const localCtx = {};
       if (kvalue) {
         localCtx[kvalue] = item.$value;
@@ -181,6 +198,7 @@ export const render = compose(
   xattr,
   xclass,
   xtext,
+  xcontent,
   xif,
   xfor,
   prepare
