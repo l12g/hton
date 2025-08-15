@@ -3,8 +3,10 @@ code-box {
   background-color: #f8f8f8;
   padding: 12px;
   position: relative;
-  box-shadow: 0 0 11px 0 #e6e6e6, 0 1rem 0 -0.5rem #ffffff, 0 1rem 11px -0.5rem #d2d2d2, 0 2rem 0 -1rem #ffffff, 0 2rem 11px -1.2rem #d2d2d2;
-  /* box-shadow: 0 2px 4px 0 #ebebeb, 0 1rem 0 -0.5rem #ffffff, 0 1.1rem 11px -0.5rem #dfdfdf; */
+  bo_shadow: 0 0 11px 0 #e6e6e6, 0 1rem 0 -0.5rem #ffffff,
+    0 1rem 11px -0.5rem #d2d2d2, 0 2rem 0 -1rem #ffffff,
+    0 2rem 11px -1.2rem #d2d2d2;
+  /* bo_shadow: 0 2px 4px 0 #ebebeb, 0 1rem 0 -0.5rem #ffffff, 0 1.1rem 11px -0.5rem #dfdfdf; */
   border-radius: 2px;
   .code {
     border-right: solid 1px #eeeeee;

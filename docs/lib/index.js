@@ -5,9 +5,7 @@
 })(this, (function (exports) { 'use strict';
 
   function call(fnlike, ...rest) {
-    return typeof fnlike === "function"
-      ? call(fnlike.call(null, ...rest), ...rest)
-      : fnlike;
+    return typeof fnlike === "function" ? fnlike.call(null, ...rest) : fnlike;
   }
   const nope = () => {};
   function compile(ctx, expression) {
@@ -19,6 +17,7 @@
 
   function walk(el, fn) {
     if (!el) return;
+    el.$next = el.nextElementSibling;
     fn(el);
     if (el.getAttribute("x-for")) {
       walk(el.nextElementSibling, fn);
@@ -77,6 +76,24 @@
     });
   }
 
+  function isInput(el) {
+    return el.tagName === "INPUT";
+  }
+  function isCheckbox(el) {
+    return isInput(el) && el.getAttribute("type") === "checkbox";
+  }
+  function isRadio(el) {
+    return isInput(el) && el.getAttribute("type") === "radio";
+  }
+  function isTemplate(el) {
+    return el && el.tagName === "TEMPLATE";
+  }
+
+  const prefix = "_";
+
+  function formatAttr(attr) {
+    return prefix + attr;
+  }
   function remove(dom) {
     const chs = [...dom.children];
     chs.forEach(remove);
@@ -87,47 +104,70 @@
   }
 
   function react(attr, { dom, ctx, effect }, fn) {
+    attr = formatAttr(attr);
     const exp = dom.getAttribute(attr);
     dom.removeAttribute(attr);
 
     if (!exp) return;
     if (!fn) return;
     const tick = compile(ctx, exp);
-    dom.$clears.push(
+    onClear(
+      dom,
       effect(() => {
-        fn(call(tick));
+        fn(call(tick), exp);
       })
     );
   }
 
   function xtext(opt) {
-    return react("x-text", opt, (value) => {
+    return react("text", opt, (value) => {
       opt.dom.innerText = value;
     });
   }
   function xcontent(opt) {
-    if (opt.dom.getAttribute("x-text")) {
+    if (opt.dom.getAttribute("text")) {
       return;
     }
-
-    console.log(
-      "%c 🐛[  ]-36",
-      "font-size:13px; background:#3223e9; color:#7667ff;",
-      opt.dom.childNodes
-    );
-    const match = opt.dom.innerHTML.match(/\{(.*?)\}/g);
-    console.log(
-      "%c 🐛[ match ]-33",
-      "font-size:13px; background:#7de3a3; color:#c1ffe7;",
-      match
+    const nodes = [...opt.dom.childNodes].filter((v) => v.nodeType === 3);
+    const results = nodes
+      .map((v) => {
+        const match = v.textContent.match(/\{(.*?)\}/g);
+        if (!match) return null;
+        const ticks = match.map((m) =>
+          compile(opt.ctx, m.slice(1, m.length - 1))
+        );
+        return {
+          content: v.textContent,
+          node: v,
+          match,
+          ticks,
+        };
+      })
+      .filter(Boolean);
+    if (results.length === 0) return;
+    onClear(
+      opt.dom,
+      opt.effect(() => {
+        results.forEach((n) => {
+          n.node.textContent = n.ticks.reduce((prev, tick, index) => {
+            return prev.replace(n.match[index], call(tick));
+          }, n.content);
+        });
+      })
     );
   }
 
+  function xhtml(opt) {
+    react("html", opt, (value) => {
+      opt.dom.innerHTML = value;
+    });
+  }
+
   function xon(opt) {
-    return react("x-on", opt, (obj) => {
+    return react("on", opt, (obj) => {
       Object.keys(obj).forEach((event) => {
         opt.dom.addEventListener(event, obj[event]);
-        opt.dom.$clears.push(() => {
+        onClear(opt.dom, () => {
           opt.dom.removeEventListener(event, obj[event]);
         });
       });
@@ -135,32 +175,85 @@
   }
 
   function xif(opt) {
-    if (!opt.dom.getAttribute("x-if")) {
+    if (!opt.dom.getAttribute(formatAttr("if"))) {
       return;
     }
+    const templateNodes = isTemplate(opt.dom)
+      ? [...opt.dom.content.children]
+      : [];
+    const nodes = [];
+    let next = opt.dom.$next;
+    const elseAttr = formatAttr("else");
+    const elseifAttr = formatAttr("elseif");
+    while (next) {
+      if (next.hasAttribute(elseAttr) || next.hasAttribute(elseifAttr)) {
+        const attr = next.getAttribute(elseAttr) || next.getAttribute(elseifAttr);
+        nodes.push({
+          node: next,
+          marker: new Comment("elif"),
+          attr: next.getAttribute(elseAttr) || next.getAttribute(elseifAttr),
+          tick: attr ? compile(opt.ctx, attr) : () => true,
+        });
+        next = next.$next;
+      } else {
+        break;
+      }
+    }
 
-    const marker = new Comment("x-if");
-    react("x-if", opt, (value) => {
-      if (value) {
+    const marker = new Comment("if");
+    if (isTemplate(opt.dom)) {
+      opt.dom.replaceWith(marker);
+    }
+    const toggleNode = (node, visible, marker) => {
+      if (visible) {
         if (marker.parentNode) {
-          marker.replaceWith(opt.dom);
+          if (isTemplate(node)) {
+            marker.replaceWith(node.content);
+          } else {
+            marker.replaceWith(node);
+          }
         }
       } else {
-        if (opt.dom.parentNode) {
-          opt.dom.replaceWith(marker);
+        if (isTemplate(node)) {
+          if (!marker.parentNode) {
+            templateNodes[0].before(marker);
+          }
+          templateNodes.forEach((n) => node.content.appendChild(n));
+        } else {
+          if (node.parentNode) {
+            node.replaceWith(marker);
+          }
         }
+      }
+    };
+
+    react("if", opt, (value) => {
+      toggleNode(opt.dom, value, marker);
+      if (value) {
+        nodes.map((n) => toggleNode(n.node, false, n.marker));
+      } else {
+        let trueIdx = -1;
+        for (let i = 0; i < nodes.length; i++) {
+          if (call(nodes[i].tick())) {
+            trueIdx = i;
+            break;
+          }
+        }
+        nodes.map((n, i) => toggleNode(n.node, i === trueIdx, n.marker));
       }
     });
   }
+
   function xfor(opt) {
     const { dom, ctx, effect } = opt;
-    const exp = dom.getAttribute("x-for");
-    dom.removeAttribute("x-for");
+    const attr = formatAttr("for");
+    const exp = dom.getAttribute(attr);
+    dom.removeAttribute(attr);
     if (!exp) return;
     const origin = dom.cloneNode(true);
     const parsed = exp.split(/\bin\b/).map((v) => v.trim());
     const error = new Error(
-      "x-for must be like 'k,v in list (for object) or item in list (for array)'"
+      "for must be like 'k,v in list (for object) or item in list (for array)'"
     );
 
     let kbody = "";
@@ -187,7 +280,7 @@
       throw error;
     }
 
-    const marker = new Comment("x-for");
+    const marker = new Comment("for");
     const doc = document.createDocumentFragment();
     dom.replaceWith(marker);
     const doms = [];
@@ -223,12 +316,12 @@
       });
       marker.after(doc);
     };
-    dom.$clears.push(effect(run));
+    onClear(dom, effect(run));
     return null;
   }
 
   function xclass(opt) {
-    react("x-class", opt, (value) => {
+    react("class", opt, (value) => {
       Object.keys(value).forEach((key) => {
         if (value[key]) {
           opt.dom.classList.add(key);
@@ -240,7 +333,7 @@
   }
 
   function xattr(opt) {
-    react("x-attr", opt, (value) => {
+    react("attr", opt, (value) => {
       Object.keys(value).forEach((key) => {
         const v = value[key];
         if (v === false || v === null || v === undefined) {
@@ -253,7 +346,7 @@
   }
 
   function xstyle(opt) {
-    react("x-style", opt, (value) => {
+    react("style", opt, (value) => {
       Object.keys(value).forEach((key) => {
         const v = value[key];
         if (v === false || v === null || v === undefined) {
@@ -268,14 +361,67 @@
   function prepare(opt) {
     if (!opt.$clears) opt.dom.$clears = [];
   }
+  function ref(opt) {
+    react("ref", opt, (value, exp) => {
+      call(value, opt.dom);
+    });
+  }
+
+  function xmodel(opt) {
+    const { effect, dom, ctx } = opt;
+    const attr = formatAttr("model");
+    const exp = dom.getAttribute(attr);
+    dom.removeAttribute(attr);
+    if (!exp) return;
+    const checkorradio = isCheckbox(dom) || isRadio(dom);
+    const evt = checkorradio ? "click" : "input";
+    const ctrl = new AbortController();
+    dom.addEventListener(
+      evt,
+      (e) => {
+        if (checkorradio) {
+          ctx[exp] = e.target.checked;
+        } else {
+          ctx[exp] = e.target.value;
+        }
+      },
+      { singal: ctrl.signal }
+    );
+    onClear(dom, () => ctrl.abort());
+    onClear(
+      dom,
+      effect(() => {
+        switch (dom.tagName) {
+          case "INPUT":
+          case "TEXTAREA":
+            if (checkorradio) {
+              dom.checked = !!ctx[exp];
+            } else {
+              dom.value = ctx[exp];
+            }
+            break;
+          case "SELECT":
+            dom.selectedIndex = ctx[exp];
+        }
+      })
+    );
+  }
+
+  function onClear(dom, fn) {
+    dom.$clears.push(fn);
+  }
 
   const render = compose(
+    ref,
+    xmodel,
     xon,
     xstyle,
     xattr,
     xclass,
+    xhtml,
     xtext,
     xcontent,
+    // xtemplate,
     xif,
     xfor,
     prepare
@@ -332,7 +478,7 @@
     const set = (obj = {}) => {
       Object.assign(ctx, obj);
     };
-    const userContext = fn(get, set);
+    const userContext = fn(get, set, effect);
 
     Object.assign(ctx, userContext);
 
@@ -358,8 +504,6 @@
   }
 
   const __version__ = "0.0.0";
-
-  // html + addon = hton
 
   exports.__version__ = __version__;
   exports.create = create;

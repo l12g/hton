@@ -52,7 +52,7 @@ export function create(fn) {
   const set = (obj = {}) => {
     Object.assign(ctx, obj);
   };
-  const userContext = fn(get, set);
+  const userContext = fn(get, set, effect);
 
   Object.assign(ctx, userContext);
 

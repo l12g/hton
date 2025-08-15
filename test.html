@@ -8,22 +8,21 @@
   </head>
   <body>
     <div id="app">
-      <h1>{ count } hello { count+1 }</h1>
-      <ul>
-        <li x-for="item,index in list">
-          <span x-text="index"></span>
-          <span x-text="count"></span>
-        </li>
-      </ul>
-      <hr />
-      <button x-on="{click:add}">add</button>
-      <button x-on="{click:push}">push</button>
+      <button _on="{click:add}">add</button>
+
+      <template _if="count%2">
+        <div>from template</div>
+        <div>dd</div>
+      </template>
+
+      <div _else>hello</div>
     </div>
     <script>
-      const { cbs, mount } = hton.create((get, set) => {
+      const { cbs, mount } = hton.create((get, set, effect) => {
         return {
           count: 0,
           list: [1],
+          checked: true,
           add() {
             set({
               count: get().count + 1,
@@ -33,6 +32,13 @@
             set({
               list: [...get().list, Date.now()],
             });
+          },
+          focus(el) {
+            console.log(
+              "%c 🐛[  ]-41",
+              "font-size:13px; background:#f8f727; color:#ffff6b;",
+              el
+            );
           },
         };
       });

@@ -1,7 +1,5 @@
 export function call(fnlike, ...rest) {
-  return typeof fnlike === "function"
-    ? call(fnlike.call(null, ...rest), ...rest)
-    : fnlike;
+  return typeof fnlike === "function" ? fnlike.call(null, ...rest) : fnlike;
 }
 export const nope = () => {};
 
@@ -17,6 +15,7 @@ export function compile(ctx, expression) {
 
 export function walk(el, fn) {
   if (!el) return;
+  el.$next = el.nextElementSibling;
   fn(el);
   if (el.getAttribute("x-for")) {
     walk(el.nextElementSibling, fn);
@@ -73,4 +72,17 @@ export function extendContext(base, ctx) {
       return true;
     },
   });
+}
+
+export function isInput(el) {
+  return el.tagName === "INPUT";
+}
+export function isCheckbox(el) {
+  return isInput(el) && el.getAttribute("type") === "checkbox";
+}
+export function isRadio(el) {
+  return isInput(el) && el.getAttribute("type") === "radio";
+}
+export function isTemplate(el) {
+  return el && el.tagName === "TEMPLATE";
 }

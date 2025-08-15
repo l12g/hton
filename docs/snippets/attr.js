@@ -10,4 +10,4 @@ hton
       },
     };
   })
-  .mount(document.querySelector(".demo-if"));
+  .mount(document.querySelector(".demo-attr"));
