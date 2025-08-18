@@ -58,18 +58,15 @@ export function create(fn) {
 
   return {
     mount(el) {
-      const children = [...el.children];
       const ticks = [];
-      children.forEach((c) => {
-        walk(c, (dom) => {
-          ticks.push(() =>
-            render({
-              dom,
-              ctx,
-              effect,
-            })
-          );
-        });
+      walk(el, (dom) => {
+        ticks.push(() =>
+          render({
+            dom,
+            ctx,
+            effect,
+          })
+        );
       });
       ticks.forEach(call);
     },

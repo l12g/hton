@@ -2,20 +2,21 @@ import {
   call,
   compile,
   compose,
-  walk,
   extendContext,
+  formatAttr,
+  getAttr,
+  hasAttr,
   isCheckbox,
   isRadio,
   isTemplate,
+  isTextNode,
+  isValidNode,
+  removeAttr,
+  walk,
 } from "./utils";
 
-const prefix = "_";
-
-function formatAttr(attr) {
-  return prefix + attr;
-}
 function remove(dom) {
-  const chs = [...dom.children];
+  const chs = [...dom.childNodes];
   chs.forEach(remove);
   if (dom.$clears) {
     dom.$clears.forEach(call);
@@ -44,38 +45,6 @@ function xtext(opt) {
     opt.dom.innerText = value;
   });
 }
-function xcontent(opt) {
-  if (opt.dom.getAttribute("text")) {
-    return;
-  }
-  const nodes = [...opt.dom.childNodes].filter((v) => v.nodeType === 3);
-  const results = nodes
-    .map((v) => {
-      const match = v.textContent.match(/\{(.*?)\}/g);
-      if (!match) return null;
-      const ticks = match.map((m) =>
-        compile(opt.ctx, m.slice(1, m.length - 1))
-      );
-      return {
-        content: v.textContent,
-        node: v,
-        match,
-        ticks,
-      };
-    })
-    .filter(Boolean);
-  if (results.length === 0) return;
-  onClear(
-    opt.dom,
-    opt.effect(() => {
-      results.forEach((n) => {
-        n.node.textContent = n.ticks.reduce((prev, tick, index) => {
-          return prev.replace(n.match[index], call(tick));
-        }, n.content);
-      });
-    })
-  );
-}
 
 function xhtml(opt) {
   react("html", opt, (value) => {
@@ -95,82 +64,86 @@ function xon(opt) {
 }
 
 function xif(opt) {
-  if (!opt.dom.getAttribute(formatAttr("if"))) {
+  if (!hasAttr(opt.dom, "if")) {
     return;
   }
-  const templateNodes = isTemplate(opt.dom)
-    ? [...opt.dom.content.children]
-    : [];
-  const nodes = [];
-  let next = opt.dom.$next;
-  const elseAttr = formatAttr("else");
-  const elseifAttr = formatAttr("elseif");
+  const { dom, ctx, effect } = opt;
+  const exp = getAttr(dom, "if");
+  removeAttr(dom, "if");
+  const marker = new Comment("if");
+  dom.before(marker);
+  const getTick = (el, exp) => {
+    const ower = isTemplate(el) ? el.content : new DocumentFragment();
+    const nodes = isTemplate(el) ? [...el.content.childNodes] : [el];
+    if (!isTemplate(el)) {
+      nodes.forEach((n) => ower.appendChild(n));
+    }
+    return {
+      ower,
+      nodes,
+      tick: exp ? compile(ctx, exp) : () => true,
+    };
+  };
+  const ticks = [getTick(dom, exp)];
+  let next = dom.$next;
   while (next) {
-    if (next.hasAttribute(elseAttr) || next.hasAttribute(elseifAttr)) {
-      const attr = next.getAttribute(elseAttr) || next.getAttribute(elseifAttr);
-      nodes.push({
-        node: next,
-        marker: new Comment("elif"),
-        attr: next.getAttribute(elseAttr) || next.getAttribute(elseifAttr),
-        tick: attr ? compile(opt.ctx, attr) : () => true,
-      });
+    const v = getAttr(next, "elseif") || hasAttr(next, "else");
+    if (v) {
+      ticks.push(getTick(next, v));
+      next.remove();
+      removeAttr(next, "else");
+      removeAttr(next, "elseif");
       next = next.$next;
     } else {
       break;
     }
   }
 
-  const marker = new Comment("if");
-  if (isTemplate(opt.dom)) {
-    opt.dom.replaceWith(marker);
-  }
-  const toggleNode = (node, visible, marker) => {
-    if (visible) {
-      if (marker.parentNode) {
-        if (isTemplate(node)) {
-          marker.replaceWith(node.content);
-        } else {
-          marker.replaceWith(node);
-        }
-      }
-    } else {
-      if (isTemplate(node)) {
-        if (!marker.parentNode) {
-          templateNodes[0].before(marker);
-        }
-        templateNodes.forEach((n) => node.content.appendChild(n));
-      } else {
-        if (node.parentNode) {
-          node.replaceWith(marker);
-        }
-      }
-    }
-  };
+  ticks.forEach((tick) => {
+    tick.nodes.forEach((n) => {
+      tick.ower.appendChild(n);
+      walk(n, (el) => {
+        render({ ...opt, dom: el });
+      });
+    });
+  });
 
-  react("if", opt, (value) => {
-    toggleNode(opt.dom, value, marker);
-    if (value) {
-      nodes.map((n) => toggleNode(n.node, false, n.marker));
-    } else {
-      let trueIdx = -1;
-      for (let i = 0; i < nodes.length; i++) {
-        if (call(nodes[i].tick())) {
+  effect(() => {
+    let trueIdx = -1;
+    for (let i = 0; i < ticks.length; i++) {
+      const cur = ticks[i];
+      if (trueIdx === -1) {
+        if (call(cur.tick)) {
           trueIdx = i;
-          break;
         }
       }
-      nodes.map((n, i) => toggleNode(n.node, i === trueIdx, n.marker));
+
+      if (trueIdx === i) {
+        marker.after(cur.ower);
+      } else {
+        cur.nodes.forEach((n) => cur.ower.appendChild(n));
+      }
     }
   });
 }
 
 function xfor(opt) {
   const { dom, ctx, effect } = opt;
-  const attr = formatAttr("for");
-  const exp = dom.getAttribute(attr);
-  dom.removeAttribute(attr);
+  const exp = getAttr(dom, "for");
   if (!exp) return;
-  const origin = dom.cloneNode(true);
+
+  removeAttr(dom, "for");
+  const marker = new Comment("for");
+  dom.replaceWith(marker);
+  const origin = document.createElement("template");
+  origin.innerHTML = isTemplate(dom) ? dom.innerHTML : dom.outerHTML;
+
+  console.log(
+    "%c 🐛[  ]-146",
+    "font-size:13px; background:#3f0269; color:#8346ad;",
+    origin.innerHTML
+  );
+
   const parsed = exp.split(/\bin\b/).map((v) => v.trim());
   const error = new Error(
     "for must be like 'k,v in list (for object) or item in list (for array)'"
@@ -200,15 +173,12 @@ function xfor(opt) {
     throw error;
   }
 
-  const marker = new Comment("for");
-  const doc = document.createDocumentFragment();
-  dom.replaceWith(marker);
-  const doms = [];
+  let doms = [];
 
   const tick = compile(ctx, kbody, "loop");
+  const doc = document.createDocumentFragment();
   const run = ({ setCurrent } = {}) => {
     doms.forEach(remove);
-    doms.length = 0;
     const objorlist = call(tick);
     call(setCurrent, null);
     const list = Array.isArray(objorlist)
@@ -231,12 +201,13 @@ function xfor(opt) {
       walk(clone, (el) => {
         render({ dom: el, ctx: extendContext(ctx, localCtx), effect });
       });
-      doms.push(clone);
-      doc.append(clone);
+
+      doc.append(clone.content);
+      doms = [...doc.childNodes];
     });
     marker.after(doc);
   };
-  onClear(dom, effect(run));
+  effect(run);
   return null;
 }
 
@@ -279,6 +250,9 @@ function xstyle(opt) {
 }
 
 function prepare(opt) {
+  if (!isValidNode(opt.dom)) {
+    return null;
+  }
   if (!opt.$clears) opt.dom.$clears = [];
 }
 function ref(opt) {
@@ -327,21 +301,31 @@ function xmodel(opt) {
   );
 }
 
-function xtemplate(opt) {
-  if (!isTemplate(opt.dom)) {
+function xplain(opt) {
+  if (!isTextNode(opt.dom)) {
     return;
   }
-  const doc = opt.dom.content;
-  const marker = new Comment("template");
-  opt.dom.replaceWith(marker);
-  [...doc.children].forEach((el) => {
-    walk(el, (dom) => {
-      dom.$ower = doc;
-      render({ ...opt, dom });
-    });
-  });
+  const { dom, ctx, effect } = opt;
 
-  marker.after(doc);
+  if (!dom.parentNode) return null;
+  const content = dom.textContent;
+
+  const match = content.match(/\{(.*?)\}/g);
+  if (match) {
+    const ticks = match.map((m) => {
+      return {
+        match,
+        tick: compile(ctx, m.slice(1, m.length - 1)),
+      };
+    });
+    effect(() => {
+      dom.textContent = ticks.reduce((prev, cur, index) => {
+        return prev.replace(cur.match, call(cur.tick));
+      }, content);
+    });
+  }
+
+  return null;
 }
 
 function onClear(dom, fn) {
@@ -357,9 +341,8 @@ export const render = compose(
   xclass,
   xhtml,
   xtext,
-  xcontent,
-  // xtemplate,
   xif,
   xfor,
+  xplain,
   prepare
 );

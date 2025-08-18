@@ -8,14 +8,16 @@
   </head>
   <body>
     <div id="app">
-      <button _on="{click:add}">add</button>
-
-      <template _if="count%2">
-        <div>from template</div>
-        <div>dd</div>
+      <template _for="item in list">
+        <div>{item}{count}</div>
       </template>
-
-      <div _else>hello</div>
+      <!-- <ul>
+        <li _for="i in list">{i}</li>
+      </ul> -->
+      <div>{count}{count*2}</div>
+      <button _on="{click:add}">add</button>
+      <button _on="{click:reduce}">reduce</button>
+      <button _on="{click:push}">push</button>
     </div>
     <script>
       const { cbs, mount } = hton.create((get, set, effect) => {
@@ -23,9 +25,15 @@
           count: 0,
           list: [1],
           checked: true,
+
           add() {
             set({
               count: get().count + 1,
+            });
+          },
+          reduce() {
+            set({
+              count: get().count - 1,
             });
           },
           push() {

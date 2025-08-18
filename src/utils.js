@@ -14,21 +14,31 @@ export function compile(ctx, expression) {
 }
 
 export function walk(el, fn) {
-  if (!el) return;
-  el.$next = el.nextElementSibling;
-  fn(el);
-  if (el.getAttribute("x-for")) {
-    walk(el.nextElementSibling, fn);
-  } else {
-    let cur = el.firstElementChild;
-    while (cur) {
-      fn(cur);
-      [...cur.children].forEach((c) => {
-        walk(c, fn);
-      });
-      cur = cur.nextElementSibling;
-    }
+  if (!isValidNode(el)) return;
+  if (!el.$next) {
+    el.$next = el.nextElementSibling;
   }
+  fn(el);
+
+  if (!isElement(el)) {
+    return;
+  }
+  if (isTemplate(el)) {
+    walkTemplate(el, fn);
+    return;
+  }
+  if (hasAttr(el, "for")) {
+    return;
+  }
+  if (hasAttr(el, "if") || hasAttr(el, "elseif") || hasAttr(el, "else")) {
+    return;
+  }
+
+  const children = [...el.childNodes];
+  children.forEach((c) => walk(c, fn));
+}
+export function walkTemplate(el, fn) {
+  [...el.content.childNodes].forEach((c) => walk(c, fn));
 }
 
 export function compose(...fns) {
@@ -75,7 +85,7 @@ export function extendContext(base, ctx) {
 }
 
 export function isInput(el) {
-  return el.tagName === "INPUT";
+  return isValidNode(el) && el.tagName === "INPUT";
 }
 export function isCheckbox(el) {
   return isInput(el) && el.getAttribute("type") === "checkbox";
@@ -84,5 +94,30 @@ export function isRadio(el) {
   return isInput(el) && el.getAttribute("type") === "radio";
 }
 export function isTemplate(el) {
-  return el && el.tagName === "TEMPLATE";
+  return isValidNode(el) && el.tagName === "TEMPLATE";
+}
+export function isTextNode(el) {
+  return isValidNode(el) && el.nodeType === 3;
+}
+export function isElement(el) {
+  return isValidNode(el) && [1, 11].includes(el.nodeType);
+}
+export function isFragment(el) {
+  return isValidNode(el) && el.nodeType === 11;
+}
+export function isValidNode(el) {
+  return el && [1, 3, 11].includes(el.nodeType);
+}
+export function formatAttr(attr) {
+  const prefix = "_";
+  return prefix + attr;
+}
+export function hasAttr(el, attr) {
+  return el.hasAttribute(formatAttr(attr));
+}
+export function getAttr(el, attr) {
+  return el.getAttribute(formatAttr(attr));
+}
+export function removeAttr(el, attr) {
+  return el.removeAttribute(formatAttr(attr));
 }
