@@ -20,6 +20,9 @@ export function create(fn) {
       return true;
     },
     get(obj, k) {
+      if (k === Symbol.unscopables) {
+        return null;
+      }
       if (!cbs.get(k)) {
         cbs.set(k, new Set());
       }

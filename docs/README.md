@@ -2,7 +2,7 @@
 
 > html + addon = hton
 
-一个快速，轻量`gzip≈1k`的 html 渲染库
+一个快速，轻量的 html 渲染库`gzip≈3k`
 
 hton 不创建 dom，它只是在 html 上添加了一些属性，通过这些属性来操作 dom
 
@@ -122,15 +122,18 @@ or
         <span _text="v"></span>
       </li>
     </ul>
+    <template _for="item,index in list">
+      <div>content from template1. {index}:{item}</div>
+      <div>content from template2. {index}:{item}</div>
+    </template>
 
   </div>
+  
 </code-box>
 
 > key 去哪了？
 >
 > 没有 key，全量更新！
->
-> 可能以后会加吧
 
 ## 表单
 

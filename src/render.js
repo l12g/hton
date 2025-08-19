@@ -138,12 +138,6 @@ function xfor(opt) {
   const origin = document.createElement("template");
   origin.innerHTML = isTemplate(dom) ? dom.innerHTML : dom.outerHTML;
 
-  console.log(
-    "%c 🐛[  ]-146",
-    "font-size:13px; background:#3f0269; color:#8346ad;",
-    origin.innerHTML
-  );
-
   const parsed = exp.split(/\bin\b/).map((v) => v.trim());
   const error = new Error(
     "for must be like 'k,v in list (for object) or item in list (for array)'"
@@ -178,6 +172,11 @@ function xfor(opt) {
   const tick = compile(ctx, kbody, "loop");
   const doc = document.createDocumentFragment();
   const run = ({ setCurrent } = {}) => {
+    console.log(
+      "%c 🐛[  ]-176",
+      "font-size:13px; background:#69144c; color:#ad5890;",
+      doms
+    );
     doms.forEach(remove);
     const objorlist = call(tick);
     call(setCurrent, null);
@@ -311,18 +310,22 @@ function xplain(opt) {
   const content = dom.textContent;
 
   const match = content.match(/\{(.*?)\}/g);
+
   if (match) {
     const ticks = match.map((m) => {
       return {
-        match,
+        match: m,
         tick: compile(ctx, m.slice(1, m.length - 1)),
       };
     });
-    effect(() => {
-      dom.textContent = ticks.reduce((prev, cur, index) => {
-        return prev.replace(cur.match, call(cur.tick));
-      }, content);
-    });
+    onClear(
+      dom,
+      effect(() => {
+        dom.textContent = ticks.reduce((prev, cur, index) => {
+          return prev.replace(cur.match, call(cur.tick));
+        }, content);
+      })
+    );
   }
 
   return null;
