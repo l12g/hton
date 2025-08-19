@@ -278,11 +278,6 @@
     const tick = compile(ctx, kbody);
     const doc = document.createDocumentFragment();
     const run = ({ setCurrent } = {}) => {
-      console.log(
-        "%c 🐛[  ]-176",
-        "font-size:13px; background:#69144c; color:#ad5890;",
-        doms
-      );
       doms.forEach(remove);
       const objorlist = call(tick);
       call(setCurrent, null);
