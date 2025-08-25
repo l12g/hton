@@ -1,7 +1,7 @@
 hton
-  .create((get, set) => {
+  .create((state) => {
     setInterval(() => {
-      set({ count: get().count + 1 });
+      state.count++;
     }, 1000);
     return {
       count: 0,

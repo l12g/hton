@@ -1,9 +1,9 @@
 hton
-  .create((get, set) => {
+  .create((state) => {
     return {
       input: "",
       setInput() {
-        set({ input: Math.random() });
+        state.input = Math.random();
       },
     };
   })

@@ -1,12 +1,12 @@
 hton
-  .create((get, set) => {
+  .create((state) => {
     return {
       count: 0,
       add() {
-        set({ count: get().count + 1 });
+        state.count++;
       },
       reduce() {
-        set({ count: get().count - 1 });
+        state.count--;
       },
     };
   })

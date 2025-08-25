@@ -1,18 +1,18 @@
 hton
-  .create((get, set) => {
+  .create((state) => {
     return {
       count: 0,
       style() {
         return {
-          color: get().count % 2 == 0 ? "red" : "blue",
-          "background-color": get().count % 2 == 0 ? "green" : "yellow",
+          color: state.count % 2 == 0 ? "red" : "blue",
+          "background-color": state.count % 2 == 0 ? "green" : "yellow",
         };
       },
       add() {
-        set({ count: get().count + 1 });
+        state.count++;
       },
       reduce() {
-        set({ count: get().count - 1 });
+        state.count--;
       },
     };
   })

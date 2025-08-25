@@ -15,7 +15,7 @@ export function create(fn) {
     return fn.$clear || nope;
   };
 
-  const ctx = new Proxy(
+  const state = new Proxy(
     {},
     {
       has() {
@@ -50,15 +50,8 @@ export function create(fn) {
       },
     }
   );
-
-  const get = () => {
-    return ctx;
-  };
-  const set = (obj = {}) => {
-    Object.assign(ctx, obj);
-  };
-  const userContext = fn(get, set, effect);
-  set(userContext);
+  const userContext = fn(state, effect) || {};
+  Object.assign(state, userContext);
   const mount = (el) => {
     el = typeof el === "string" ? document.querySelector(el) : el;
     const ticks = [];
@@ -66,7 +59,7 @@ export function create(fn) {
       ticks.push(() =>
         render({
           dom,
-          ctx,
+          ctx: state,
           effect,
         })
       );

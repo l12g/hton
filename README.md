@@ -10,10 +10,10 @@ simple & lightweight html render
 
 ```js
 import { create } from "hton";
-create((get, set) => {
+create((state) => {
   setTimeout(() => {
     set({
-      text: get().text + "!",
+      text: state.text + "!",
     });
   }, 1000);
   return {

@@ -18,26 +18,20 @@
       <button _on="{click:push}">push</button>
     </div>
     <script>
-      const { cbs, mount } = hton.create((get, set, effect) => {
+      const { cbs, mount } = hton.create((state, effect) => {
         return {
           count: 0,
           list: [1],
           checked: true,
 
           add() {
-            set({
-              count: get().count + 1,
-            });
+            state.count++;
           },
           reduce() {
-            set({
-              count: get().count - 1,
-            });
+            state.count--;
           },
           push() {
-            set({
-              list: [...get().list, Date.now()],
-            });
+            state.list = [...state.list, Date.now()];
           },
           focus(el) {
             el.focus();
