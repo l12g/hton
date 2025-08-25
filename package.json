@@ -1,7 +1,7 @@
 {
   "name": "htonjs",
-  "version": "0.0.0",
-  "description": "simple js library for pure html",
+  "version": "0.0.1-alpha.0",
+  "description": "simple js library for html",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
@@ -24,5 +24,10 @@
     "@rollup/plugin-terser": "^0.4.4",
     "cross-env": "^7.0.3",
     "rollup": "^4.17.2"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/l12g/hton.git"
+  },
+  "homepage": "https://github.com/l12g/hton"
 }

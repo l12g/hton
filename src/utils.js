@@ -3,9 +3,6 @@ export function call(fnlike, ...rest) {
 }
 export const nope = () => {};
 
-function x() {
-  Object.keys(ctx);
-}
 export function compile(ctx, expression) {
   const body = `with(ctx){return ${expression}}`;
   const args = ["ctx", body];
@@ -34,8 +31,9 @@ export function walk(el, fn) {
     return;
   }
 
-  const children = [...el.childNodes];
-  children.forEach((c) => walk(c, fn));
+  for (const c of el.childNodes) {
+    walk(c, fn);
+  }
 }
 export function walkTemplate(el, fn) {
   [...el.content.childNodes].forEach((c) => walk(c, fn));

@@ -15,39 +15,41 @@ export function create(fn) {
     return fn.$clear || nope;
   };
 
-  const handler = {
-    has() {
-      return true;
-    },
-    get(obj, k) {
-      if (k === Symbol.unscopables) {
-        return null;
-      }
-      if (!cbs.get(k)) {
-        cbs.set(k, new Set());
-      }
-      if (current) {
-        const _cur = current;
-        cbs.get(k).add(_cur);
-        _cur.$clear = () => {
-          cbs.get(k).delete(_cur);
-        };
-      }
-      return obj[k];
-    },
-    set(obj, k, v) {
-      if (obj[k] === v) {
+  const ctx = new Proxy(
+    {},
+    {
+      has() {
         return true;
-      }
-      obj[k] = v;
-      if (cbs.has(k)) {
-        const deps = cbs.get(k);
-        deps.forEach((f) => f(effectArgs));
-      }
-      return true;
-    },
-  };
-  const ctx = new Proxy({}, handler);
+      },
+      get(obj, k) {
+        if (k === Symbol.unscopables) {
+          return null;
+        }
+        if (!cbs.get(k)) {
+          cbs.set(k, new Set());
+        }
+        if (current) {
+          const _cur = current;
+          cbs.get(k).add(_cur);
+          _cur.$clear = () => {
+            cbs.get(k).delete(_cur);
+          };
+        }
+        return obj[k];
+      },
+      set(obj, k, v) {
+        if (obj[k] === v) {
+          return true;
+        }
+        obj[k] = v;
+        if (cbs.has(k)) {
+          const deps = cbs.get(k);
+          deps.forEach((f) => f(effectArgs));
+        }
+        return true;
+      },
+    }
+  );
 
   const get = () => {
     return ctx;
@@ -56,23 +58,23 @@ export function create(fn) {
     Object.assign(ctx, obj);
   };
   const userContext = fn(get, set, effect);
-
-  Object.assign(ctx, userContext);
+  set(userContext);
+  const mount = (el) => {
+    el = typeof el === "string" ? document.querySelector(el) : el;
+    const ticks = [];
+    walk(el, (dom) => {
+      ticks.push(() =>
+        render({
+          dom,
+          ctx,
+          effect,
+        })
+      );
+    });
+    ticks.forEach(call);
+  };
 
   return {
-    mount(el) {
-      const ticks = [];
-      walk(el, (dom) => {
-        ticks.push(() =>
-          render({
-            dom,
-            ctx,
-            effect,
-          })
-        );
-      });
-      ticks.forEach(call);
-    },
-    cbs,
+    mount,
   };
 }

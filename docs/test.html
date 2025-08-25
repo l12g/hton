@@ -4,14 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Document</title>
-    <script src="./dist/index.js"></script>
+    <script src="./lib/index.js"></script>
   </head>
   <body>
     <div id="app">
       <template _for="item in list">
-        <div>{item}{count}</div>
+        <div _ref="div">{item}{count}</div>
       </template>
-      <div>{count}{count*2}</div>
+      <div _data-count="count">{count}{count*2}</div>
+      <input type="text" _ref="focus" />
       <button _on="{click:add}">add</button>
       <button _on="{click:reduce}">reduce</button>
       <button _on="{click:push}">push</button>
@@ -39,15 +40,14 @@
             });
           },
           focus(el) {
-            console.log(
-              "%c 🐛[  ]-41",
-              "font-size:13px; background:#f8f727; color:#ffff6b;",
-              el
-            );
+            el.focus();
+          },
+          div(el) {
+            el.innerHTML = "dddddxx";
           },
         };
       });
-      mount(document.querySelector("#app"));
+      mount("#app");
     </script>
   </body>
 </html>

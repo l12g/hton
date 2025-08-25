@@ -155,3 +155,11 @@ or
   <h1 _attr="{'data-count':count}">h1 with data-count="{count}"</h1>
 </div>
 </code-box>
+
+## 操作 dom
+
+<code-box src="./snippets/dom.js">
+<div class='demo-dom'>
+  <input _ref="ref"/>
+</div>
+</code-box>

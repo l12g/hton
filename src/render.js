@@ -15,6 +15,13 @@ import {
   walk,
 } from "./utils";
 
+function createMarker(desc) {
+  if (__DEV__) {
+    return new Comment(desc);
+  }
+  return new Text("");
+}
+
 function remove(dom) {
   const chs = [...dom.childNodes];
   chs.forEach(remove);
@@ -25,14 +32,12 @@ function remove(dom) {
 }
 
 function react(attr, { dom, ctx, effect }, fn) {
-  attr = formatAttr(attr);
-  const exp = dom.getAttribute(attr);
-  dom.removeAttribute(attr);
-
+  const exp = getAttr(dom, attr);
+  removeAttr(dom, attr);
   if (!exp) return;
   if (!fn) return;
   const tick = compile(ctx, exp);
-  onClear(
+  clean(
     dom,
     effect(() => {
       fn(call(tick), exp);
@@ -53,12 +58,12 @@ function xhtml(opt) {
 }
 
 function xon(opt) {
+  let ctrl;
   return react("on", opt, (obj) => {
+    if (ctrl) ctrl.abort();
+    ctrl = new AbortController();
     Object.keys(obj).forEach((event) => {
-      opt.dom.addEventListener(event, obj[event]);
-      onClear(opt.dom, () => {
-        opt.dom.removeEventListener(event, obj[event]);
-      });
+      opt.dom.addEventListener(event, obj[event], { signal: ctrl.signal });
     });
   });
 }
@@ -70,7 +75,7 @@ function xif(opt) {
   const { dom, ctx, effect } = opt;
   const exp = getAttr(dom, "if");
   removeAttr(dom, "if");
-  const marker = new Comment("if");
+  const marker = createMarker("if");
   dom.before(marker);
   const getTick = (el, exp) => {
     const ower = isTemplate(el) ? el.content : new DocumentFragment();
@@ -108,23 +113,26 @@ function xif(opt) {
     });
   });
 
-  effect(() => {
-    let trueIdx = -1;
-    for (let i = 0; i < ticks.length; i++) {
-      const cur = ticks[i];
-      if (trueIdx === -1) {
-        if (call(cur.tick)) {
-          trueIdx = i;
+  clean(
+    dom,
+    effect(() => {
+      let trueIdx = -1;
+      for (let i = 0; i < ticks.length; i++) {
+        const cur = ticks[i];
+        if (trueIdx === -1) {
+          if (call(cur.tick)) {
+            trueIdx = i;
+          }
+        }
+
+        if (trueIdx === i) {
+          marker.after(cur.ower);
+        } else {
+          cur.nodes.forEach((n) => cur.ower.appendChild(n));
         }
       }
-
-      if (trueIdx === i) {
-        marker.after(cur.ower);
-      } else {
-        cur.nodes.forEach((n) => cur.ower.appendChild(n));
-      }
-    }
-  });
+    })
+  );
 }
 
 function xfor(opt) {
@@ -133,7 +141,7 @@ function xfor(opt) {
   if (!exp) return;
 
   removeAttr(dom, "for");
-  const marker = new Comment("for");
+  const marker = createMarker("for");
   dom.replaceWith(marker);
   const origin = document.createElement("template");
   origin.innerHTML = isTemplate(dom) ? dom.innerHTML : dom.outerHTML;
@@ -218,6 +226,14 @@ function xclass(opt) {
 }
 
 function xattr(opt) {
+  for (const atr of opt.dom.attributes) {
+    if (/^_/.test(atr.name)) {
+      const n = atr.name.slice(1);
+      react(n, opt, (value) => {
+        opt.dom.setAttribute(n, value);
+      });
+    }
+  }
   react("attr", opt, (value) => {
     Object.keys(value).forEach((key) => {
       const v = value[key];
@@ -250,7 +266,7 @@ function prepare(opt) {
   if (!opt.$clears) opt.dom.$clears = [];
 }
 function ref(opt) {
-  react("ref", opt, (value, exp) => {
+  react("ref", opt, (value) => {
     call(value, opt.dom);
   });
 }
@@ -275,8 +291,8 @@ function xmodel(opt) {
     },
     { singal: ctrl.signal }
   );
-  onClear(dom, () => ctrl.abort());
-  onClear(
+  clean(dom, () => ctrl.abort());
+  clean(
     dom,
     effect(() => {
       switch (dom.tagName) {
@@ -313,7 +329,7 @@ function xplain(opt) {
         tick: compile(ctx, m.slice(1, m.length - 1)),
       };
     });
-    onClear(
+    clean(
       dom,
       effect(() => {
         dom.textContent = ticks.reduce((prev, cur, index) => {
@@ -326,16 +342,16 @@ function xplain(opt) {
   return null;
 }
 
-function onClear(dom, fn) {
+function clean(dom, fn) {
   dom.$clears.push(fn);
 }
 
 export const render = compose(
+  xattr,
   ref,
   xmodel,
   xon,
   xstyle,
-  xattr,
   xclass,
   xhtml,
   xtext,
