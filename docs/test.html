@@ -11,7 +11,7 @@
       <template _for="item in list">
         <div _ref="div">{item}{count}</div>
       </template>
-      <div _data-count="count">{count}{count*2}</div>
+      <div _data-count="count" _data-x="count*2">{count}{count*2}</div>
       <input type="text" _ref="focus" />
       <button _on="{click:add}">add</button>
       <button _on="{click:reduce}">reduce</button>

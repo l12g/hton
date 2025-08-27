@@ -14,6 +14,7 @@ import {
   removeAttr,
   walk,
 } from "./utils";
+import { effect, setCurrent } from "./effect";
 
 function createMarker(desc) {
   if (__DEV__) {
@@ -31,7 +32,7 @@ function remove(dom) {
   dom.remove();
 }
 
-function react(attr, { dom, ctx, effect }, fn) {
+function react(attr, { dom, ctx }, fn) {
   const exp = getAttr(dom, attr);
   removeAttr(dom, attr);
   if (!exp) return;
@@ -72,7 +73,7 @@ function xif(opt) {
   if (!hasAttr(opt.dom, "if")) {
     return;
   }
-  const { dom, ctx, effect } = opt;
+  const { dom, ctx } = opt;
   const exp = getAttr(dom, "if");
   removeAttr(dom, "if");
   const marker = createMarker("if");
@@ -136,7 +137,7 @@ function xif(opt) {
 }
 
 function xfor(opt) {
-  const { dom, ctx, effect } = opt;
+  const { dom, ctx } = opt;
   const exp = getAttr(dom, "for");
   if (!exp) return;
 
@@ -179,7 +180,7 @@ function xfor(opt) {
 
   const tick = compile(ctx, kbody, "loop");
   const doc = document.createDocumentFragment();
-  const run = ({ setCurrent } = {}) => {
+  const run = () => {
     doms.forEach(remove);
     const objorlist = call(tick);
     call(setCurrent, null);
@@ -201,7 +202,7 @@ function xfor(opt) {
       }
 
       walk(clone, (el) => {
-        render({ dom: el, ctx: extendContext(ctx, localCtx), effect });
+        render({ dom: el, ctx: extendContext(ctx, localCtx) });
       });
 
       doc.append(clone.content);
@@ -226,7 +227,7 @@ function xclass(opt) {
 }
 
 function xattr(opt) {
-  for (const atr of opt.dom.attributes) {
+  for (const atr of [...opt.dom.attributes]) {
     if (/^_/.test(atr.name)) {
       const n = atr.name.slice(1);
       react(n, opt, (value) => {
@@ -272,7 +273,7 @@ function ref(opt) {
 }
 
 function xmodel(opt) {
-  const { effect, dom, ctx } = opt;
+  const { dom, ctx } = opt;
   const attr = formatAttr("model");
   const exp = dom.getAttribute(attr);
   dom.removeAttribute(attr);
@@ -315,7 +316,7 @@ function xplain(opt) {
   if (!isTextNode(opt.dom)) {
     return;
   }
-  const { dom, ctx, effect } = opt;
+  const { dom, ctx } = opt;
 
   if (!dom.parentNode) return null;
   const content = dom.textContent;

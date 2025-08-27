@@ -1,19 +1,9 @@
+import { getCurrent } from "./effect";
 import { render } from "./render";
-import { call, nope, walk } from "./utils";
+import { call, walk } from "./utils";
 
 export function create(fn) {
   const cbs = new Map();
-
-  let current = null;
-  const setCurrent = (v) => (v = current = v);
-  const effectArgs = { setCurrent };
-  const effect = (fn) => {
-    const _cur = current;
-    current = fn;
-    fn(effectArgs);
-    current = _cur;
-    return fn.$clear || nope;
-  };
 
   const state = new Proxy(
     {},
@@ -28,6 +18,7 @@ export function create(fn) {
         if (!cbs.get(k)) {
           cbs.set(k, new Set());
         }
+        const current = getCurrent();
         if (current) {
           const _cur = current;
           cbs.get(k).add(_cur);
@@ -44,23 +35,25 @@ export function create(fn) {
         obj[k] = v;
         if (cbs.has(k)) {
           const deps = cbs.get(k);
-          deps.forEach((f) => f(effectArgs));
+          deps.forEach((f) => f());
         }
         return true;
       },
     }
   );
-  const userContext = fn(state, effect) || {};
+  const userContext = fn(state) || {};
   Object.assign(state, userContext);
   const mount = (el) => {
     el = typeof el === "string" ? document.querySelector(el) : el;
+    if (!el) {
+      throw new Error("el not found");
+    }
     const ticks = [];
     walk(el, (dom) => {
       ticks.push(() =>
         render({
           dom,
           ctx: state,
-          effect,
         })
       );
     });
@@ -69,5 +62,6 @@ export function create(fn) {
 
   return {
     mount,
+    state,
   };
 }
