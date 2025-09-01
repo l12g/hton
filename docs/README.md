@@ -9,13 +9,13 @@ hton 不创建 dom，它只是在 html 上添加了一些属性，通过这些�
 # 安装
 
 ```bash
-npm install hton
+npm install htonjs
 ```
 
 # 使用
 
 ```js
-import { create } from "hton";
+import { create } from "htonjs";
 create(() => {
   return {
     msg: "hello world",

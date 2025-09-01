@@ -1,9 +1,11 @@
 {
   "name": "htonjs",
-  "version": "0.0.2-alpha.2",
+  "version": "0.0.3",
   "description": "simple js library for html",
-  "main": "dist/index.js",
+  "main": "dist/index.umd.js",
+  "module": "dist/index.esm.js",
   "type": "module",
+  "types": "types/type.d.ts",
   "scripts": {
     "build": "cross-env NODE_ENV=production rollup -c",
     "dev": "cross-env NODE_ENV=development rollup -c -w",

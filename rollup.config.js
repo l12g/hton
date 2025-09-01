@@ -12,7 +12,11 @@ export default {
     {
       format: "umd",
       name: "hton",
-      dir: "dist",
+      file: "dist/index.umd.js",
+    },
+    {
+      format: "es",
+      file: "dist/index.esm.js",
     },
     {
       format: "umd",

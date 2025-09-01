@@ -41,12 +41,19 @@ export function create(fn) {
       },
     }
   );
-  const userContext = fn(state) || {};
-  Object.assign(state, userContext);
+  const userContext = fn(state);
+  userContext && Object.assign(state, userContext);
+  const targets = new Set();
   const mount = (el) => {
     el = typeof el === "string" ? document.querySelector(el) : el;
     if (!el) {
       throw new Error("el not found");
+    }
+    if (targets.has(el)) {
+      if (__DEV__) {
+        console.warn("el has been mounted");
+      }
+      return;
     }
     const ticks = [];
     walk(el, (dom) => {
@@ -58,10 +65,23 @@ export function create(fn) {
       );
     });
     ticks.forEach(call);
+    targets.add(el);
+  };
+
+  const destroy = () => {
+    targets.forEach((el) => {
+      walk(el, (dom) => {
+        (dom.$clears || []).forEach(call);
+        dom.$clears = undefined;
+      });
+    });
+    targets.clear();
+    cbs.clear();
   };
 
   return {
     mount,
+    destroy,
     state,
   };
 }
