@@ -9,7 +9,7 @@ simple & lightweight html render
 ```
 
 ```js
-import { create } from "hton";
+import { create } from "htonjs";
 create((state) => {
   setTimeout(() => {
     set({
